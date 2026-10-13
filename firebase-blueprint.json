@@ -1,0 +1,85 @@
+{
+  "entities": {
+    "User": {
+      "title": "Banker Profile",
+      "description": "Perfil do banker com suas metas, GAINS e nível de carreira.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["banker", "leader", "partner", "admin"] },
+        "aum": { "type": "number" },
+        "rating": { "type": "string" },
+        "gains": {
+          "type": "object",
+          "properties": {
+            "goals": { "type": "string" },
+            "accomplishments": { "type": "string" },
+            "interests": { "type": "string" },
+            "networks": { "type": "string" },
+            "skills": { "type": "string" }
+          }
+        },
+        "mdcPriorities": { "type": "array", "items": { "type": "string" } },
+        "monthlyGoals": { "type": "object" }
+      },
+      "required": ["uid", "name", "email"]
+    },
+    "Lead": {
+      "title": "CRM Lead",
+      "description": "Oportunidade de negócio no pipeline do banker.",
+      "type": "object",
+      "properties": {
+        "bankerUid": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["client", "partner", "both"] },
+        "stage": { "type": "string", "enum": ["lead", "diagnostic", "proposal", "closing", "won", "lost"] },
+        "mdc": { "type": "string" },
+        "potentialValue": { "type": "number" },
+        "gains": {
+          "type": "object",
+          "properties": {
+            "goals": { "type": "string" },
+            "accomplishments": { "type": "string" },
+            "interests": { "type": "string" },
+            "networks": { "type": "string" },
+            "skills": { "type": "string" }
+          }
+        },
+        "lastContact": { "type": "string", "format": "date-time" },
+        "nextAction": { "type": "string" },
+        "nextActionDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["bankerUid", "name", "stage"]
+    },
+    "Activity": {
+      "title": "Activity Log",
+      "description": "Registro diário de atividades do banker.",
+      "type": "object",
+      "properties": {
+        "bankerUid": { "type": "string" },
+        "leadId": { "type": "string" },
+        "type": { "type": "string", "enum": ["1-a-1", "diagnostic", "proposal", "follow-up", "authority"] },
+        "date": { "type": "string", "format": "date-time" },
+        "notes": { "type": "string" },
+        "mdc": { "type": "string" }
+      },
+      "required": ["bankerUid", "type", "date"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Perfis de bankers."
+    },
+    "/leads/{leadId}": {
+      "schema": "Lead",
+      "description": "Leads do CRM."
+    },
+    "/activities/{activityId}": {
+      "schema": "Activity",
+      "description": "Log de atividades."
+    }
+  }
+}

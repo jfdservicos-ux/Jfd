@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (uid)
+    // Fields:
+    //   - uid: string (required)
+    //   - name: string (required)
+    //   - email: string (required)
+    //   - role: string (required, enum: banker, leader, partner, admin)
+    //   - aum: number
+    //   - rating: string
+    //   - gains: map
+    //   - mdcPriorities: list
+    //   - monthlyGoals: map
+    //
+    // Collection: leads
+    // Document ID: leadId
+    // Fields:
+    //   - bankerUid: string (required)
+    //   - name: string (required)
+    //   - stage: string (required, enum: lead, diagnostic, proposal, closing, won, lost)
+    //   - mdc: string
+    //   - potentialValue: number
+    //   - gains: map
+    //
+    // Collection: activities
+    // Document ID: activityId
+    // Fields:
+    //   - bankerUid: string (required)
+    //   - type: string (required)
+    //   - date: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "jfdservicos@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isBankerOwner(data) {
+      return isAuthenticated() && request.auth.uid == data.bankerUid;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'email']) &&
+             data.name is string && data.name.size() < 100 &&
+             data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") &&
+             (!('uid' in data) || data.uid is string);
+    }
+
+    function isValidLead(data) {
+      return data.keys().hasAll(['bankerUid', 'name', 'stage']) &&
+             data.bankerUid is string &&
+             data.name is string && data.name.size() < 100 &&
+             data.stage in ['lead', 'diagnostic', 'proposal', 'closing', 'won', 'lost'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'banker') || isAdmin();
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /leads/{leadId} {
+      allow read: if isAuthenticated() && (isBankerOwner(resource.data) || isAdmin());
+      allow create: if isAuthenticated() && isBankerOwner(request.resource.data) && isValidLead(request.resource.data);
+      allow update: if isAuthenticated() && isBankerOwner(resource.data) && isValidLead(request.resource.data) && request.resource.data.bankerUid == resource.data.bankerUid;
+      allow delete: if isAuthenticated() && (isBankerOwner(resource.data) || isAdmin());
+    }
+
+    match /activities/{activityId} {
+      allow read: if isAuthenticated() && (isBankerOwner(resource.data) || isAdmin());
+      allow create: if isAuthenticated() && isBankerOwner(request.resource.data);
+      allow update: if isAuthenticated() && isBankerOwner(resource.data) && request.resource.data.bankerUid == resource.data.bankerUid;
+      allow delete: if isAuthenticated() && (isBankerOwner(resource.data) || isAdmin());
+    }
+  }
+}
